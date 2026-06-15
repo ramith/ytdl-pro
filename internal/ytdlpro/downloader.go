@@ -20,7 +20,10 @@ func (d Downloader) DownloadAudio(ctx context.Context, video *youtube.Video, cfg
 	}
 
 	if cfg.AudioFormat == AudioOriginal {
-		outPath := BuildOutputPath(cfg.OutDir, cfg.Filename, video.Title, ExtensionForMIME(source.MimeType, ".audio"))
+		outPath, err := ResolveOutputPath(cfg.OutDir, cfg.Filename, video.Title, ExtensionForMIME(source.MimeType, ".audio"), cfg.Overwrite)
+		if err != nil {
+			return err
+		}
 		PrintSelectedAudio(source, string(cfg.AudioFormat))
 
 		written, err := d.downloadFormatAtomically(ctx, video, source, outPath, cfg.Overwrite)
@@ -37,7 +40,10 @@ func (d Downloader) DownloadAudio(ctx context.Context, video *youtube.Video, cfg
 		return err
 	}
 
-	outPath := BuildOutputPath(cfg.OutDir, cfg.Filename, video.Title, AudioFormatExtension(cfg.AudioFormat))
+	outPath, err := ResolveOutputPath(cfg.OutDir, cfg.Filename, video.Title, AudioFormatExtension(cfg.AudioFormat), cfg.Overwrite)
+	if err != nil {
+		return err
+	}
 	if err := EnsureCanWrite(outPath, cfg.Overwrite); err != nil {
 		return err
 	}
@@ -71,7 +77,10 @@ func (d Downloader) DownloadVideo(ctx context.Context, video *youtube.Video, cfg
 		return err
 	}
 
-	outPath := BuildOutputPath(cfg.OutDir, cfg.Filename, video.Title, selection.OutputExt)
+	outPath, err := ResolveOutputPath(cfg.OutDir, cfg.Filename, video.Title, selection.OutputExt, cfg.Overwrite)
+	if err != nil {
+		return err
+	}
 
 	if !selection.Merge {
 		PrintSelectedVideo(selection.VideoFormat, false)

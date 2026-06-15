@@ -29,6 +29,7 @@ const (
 
 type Config struct {
 	URL          string
+	Interactive  bool
 	OutDir       string
 	Filename     string
 	Overwrite    bool
@@ -48,7 +49,7 @@ func ParseConfig(args []string) (Config, error) {
 	var cfg Config
 
 	fs := flag.NewFlagSet("ytdl-pro", flag.ContinueOnError)
-	fs.StringVar(&cfg.URL, "url", "", "YouTube video URL or video ID")
+	fs.StringVar(&cfg.URL, "url", "", "YouTube video URL or video ID; may also be provided as the only positional argument")
 	fs.StringVar(&cfg.OutDir, "out", ".", "output directory")
 	fs.StringVar(&cfg.Filename, "filename", "", "optional output filename")
 	fs.BoolVar(&cfg.Overwrite, "overwrite", false, "overwrite existing file")
@@ -68,6 +69,29 @@ func ParseConfig(args []string) (Config, error) {
 
 	if err := fs.Parse(args); err != nil {
 		return Config{}, err
+	}
+
+	if fs.NArg() > 1 {
+		return Config{}, errors.New("expected one URL or video ID")
+	}
+	if fs.NArg() == 1 {
+		if strings.TrimSpace(cfg.URL) != "" {
+			return Config{}, errors.New("provide the URL either positionally or with -url, not both")
+		}
+		cfg.URL = fs.Arg(0)
+	}
+
+	visited := make(map[string]bool)
+	fs.Visit(func(f *flag.Flag) {
+		visited[f.Name] = true
+	})
+	cfg.Interactive = len(visited) == 0 || (len(visited) == 1 && visited["url"])
+
+	if cfg.Interactive {
+		if strings.TrimSpace(cfg.URL) == "" {
+			return Config{}, errors.New("missing URL; usage: ytdl-pro URL")
+		}
+		return cfg, nil
 	}
 
 	return cfg, cfg.Validate()

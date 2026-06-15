@@ -18,6 +18,33 @@ func BuildOutputPath(outDir, filename, title, ext string) string {
 	return filepath.Join(outDir, name)
 }
 
+func ResolveOutputPath(outDir, filename, title, ext string, overwrite bool) (string, error) {
+	path := BuildOutputPath(outDir, filename, title, ext)
+	if strings.TrimSpace(filename) != "" || overwrite {
+		return path, nil
+	}
+
+	return NextAvailablePath(path)
+}
+
+func NextAvailablePath(path string) (string, error) {
+	ext := filepath.Ext(path)
+	base := strings.TrimSuffix(path, ext)
+
+	for suffix := 0; ; suffix++ {
+		candidate := path
+		if suffix > 0 {
+			candidate = fmt.Sprintf("%s (%d)%s", base, suffix, ext)
+		}
+
+		if _, err := os.Stat(candidate); errors.Is(err, os.ErrNotExist) {
+			return candidate, nil
+		} else if err != nil {
+			return "", fmt.Errorf("check output path %s: %w", candidate, err)
+		}
+	}
+}
+
 func SafeFilename(name string) string {
 	replacer := strings.NewReplacer(
 		"/", "_", "\\", "_", ":", "_", "*", "_", "?", "_",

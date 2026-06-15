@@ -43,6 +43,19 @@ make install
 
 ## Usage
 
+For an interactive download, provide only the URL or video ID and answer the
+questions:
+
+```sh
+./bin/ytdl-pro "https://www.youtube.com/watch?v=VIDEO_ID"
+```
+
+The wizard confirms download permission and asks whether to download video or
+audio, which quality and output format to use, and where to save the file.
+The filename comes from the video title. If that filename already exists, a
+numbered suffix such as ` (1)` or ` (2)` is added automatically. Press Enter
+to accept each default.
+
 Show all options:
 
 ```sh
@@ -116,7 +129,7 @@ Useful output options:
 
 ```text
 -out ./downloads       Set the output directory
--filename example.mp4  Set the output filename
+-filename example.mp4  Set an explicit output filename
 -overwrite             Replace an existing output file
 -timeout 1h            Set the overall operation timeout
 -timeout 0             Disable the timeout
@@ -136,7 +149,16 @@ make clean
 Pass application arguments through the `run` target:
 
 ```sh
-make run ARGS='-url "VIDEO_ID" -list'
+make run ARGS='"VIDEO_ID"'
+```
+
+Commands with additional flags remain non-interactive:
+
+```sh
+./bin/ytdl-pro \
+  -url "https://www.youtube.com/watch?v=VIDEO_ID" \
+  -quality 1080p \
+  -i-have-rights
 ```
 
 ## Development

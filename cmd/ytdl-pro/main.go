@@ -19,6 +19,12 @@ func main() {
 		os.Exit(2)
 	}
 
+	cfg, err = ytdlpro.CompleteInteractive(os.Stdin, os.Stdout, cfg)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "error:", err)
+		os.Exit(2)
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
