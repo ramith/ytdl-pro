@@ -28,7 +28,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	if cfg.Timeout > 0 {
+	if cfg.Timeout > 0 && !cfg.Playlist && !ytdlpro.IsPlaylistURL(cfg.URL) {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, cfg.Timeout)
 		defer cancel()

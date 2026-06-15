@@ -50,6 +50,16 @@ func PrintFormats(w io.Writer, video *youtube.Video) {
 	}
 }
 
+func PrintPlaylist(w io.Writer, playlist *youtube.Playlist) {
+	fmt.Fprintln(w, "Playlist:", playlist.Title)
+	fmt.Fprintln(w, "Author:", playlist.Author)
+	fmt.Fprintf(w, "Items: %d\n\n", len(playlist.Videos))
+
+	for i, video := range playlist.Videos {
+		fmt.Fprintf(w, "%4d  %s  %s\n", i+1, video.ID, video.Title)
+	}
+}
+
 func PrintSelectedAudio(format *youtube.Format, output string) {
 	fmt.Println("selected audio:")
 	fmt.Printf("  itag=%d\n", format.ItagNo)

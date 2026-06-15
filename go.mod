@@ -2,7 +2,7 @@ module ytdl-pro
 
 go 1.26
 
-require github.com/kkdai/youtube/v2 v2.10.6
+require github.com/kkdai/youtube/v2 v2.10.7-0.20260602173030-08c2f7c74295
 
 require (
 	github.com/bitly/go-simplejson v0.5.1 // indirect

@@ -1,8 +1,8 @@
 # ytdl-pro
 
-`ytdl-pro` is a command-line YouTube downloader written in Go. It can list
-available formats, download video or audio, merge separate video and audio
-streams, and convert audio to MP3, FLAC, WAV, or ALAC.
+`ytdl-pro` is a command-line YouTube downloader written in Go. It can download
+single videos or complete playlists, list available formats, merge separate
+video and audio streams, and convert audio to MP3, FLAC, WAV, or ALAC.
 
 Only download videos that you own, license, or have permission to download.
 Downloads require the explicit `-i-have-rights` flag.
@@ -70,6 +70,46 @@ audio, which quality and output format to use, and where to save the file.
 The filename comes from the video title. If that filename already exists, a
 numbered suffix such as ` (1)` or ` (2)` is added automatically. Press Enter
 to accept each default.
+
+### Playlists
+
+Playlist URLs are detected automatically. Choose options once in the
+interactive wizard and they are applied to every playlist item:
+
+```sh
+ytdl-pro "https://www.youtube.com/playlist?list=PLAYLIST_ID"
+```
+
+For non-interactive playlist downloads, use the same switches as a single
+video:
+
+```sh
+ytdl-pro \
+  -url "https://www.youtube.com/playlist?list=PLAYLIST_ID" \
+  -audio-only \
+  -audio-format mp3 \
+  -mp3-mode vbr \
+  -mp3-vbr 0 \
+  -out ./playlist-downloads \
+  -i-have-rights
+```
+
+Normal playlist URLs and IDs are detected automatically. Use `-playlist` to
+force playlist handling for an unusual URL or ID:
+
+```sh
+ytdl-pro -url "PLAYLIST_ID" -playlist -list
+```
+
+YouTube radio/mix links (`list=RD...`) download the currently selected video
+instead of being treated as a playlist because YouTube does not expose those
+mixes through the playlist API.
+
+Playlist items are downloaded sequentially. Unavailable items are reported
+and skipped so the remaining items can continue. Each filename comes from its
+video title, with a numbered suffix added when needed. The `-filename` option
+cannot be used for playlists. The `-timeout` value applies separately to each
+playlist item rather than to the entire playlist.
 
 Show all options:
 
@@ -146,7 +186,7 @@ Useful output options:
 -out ./downloads       Set the output directory
 -filename example.mp4  Set an explicit output filename
 -overwrite             Replace an existing output file
--timeout 1h            Set the overall operation timeout
+-timeout 1h            Set the operation timeout; per item for playlists
 -timeout 0             Disable the timeout
 ```
 

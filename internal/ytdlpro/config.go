@@ -35,6 +35,7 @@ type Config struct {
 	Overwrite    bool
 	Timeout      time.Duration
 	ListFormats  bool
+	Playlist     bool
 	RightsOK     bool
 	VideoQuality string
 	AudioOnly    bool
@@ -49,12 +50,13 @@ func ParseConfig(args []string) (Config, error) {
 	var cfg Config
 
 	fs := flag.NewFlagSet("ytdl-pro", flag.ContinueOnError)
-	fs.StringVar(&cfg.URL, "url", "", "YouTube video URL or video ID; may also be provided as the only positional argument")
+	fs.StringVar(&cfg.URL, "url", "", "YouTube video or playlist URL/ID; may also be provided as the only positional argument")
 	fs.StringVar(&cfg.OutDir, "out", ".", "output directory")
 	fs.StringVar(&cfg.Filename, "filename", "", "optional output filename")
 	fs.BoolVar(&cfg.Overwrite, "overwrite", false, "overwrite existing file")
-	fs.DurationVar(&cfg.Timeout, "timeout", 30*time.Minute, "overall timeout, e.g. 10m, 1h, 0 disables timeout")
-	fs.BoolVar(&cfg.ListFormats, "list", false, "list available formats and exit")
+	fs.DurationVar(&cfg.Timeout, "timeout", 30*time.Minute, "operation timeout; applied per playlist item, e.g. 10m, 1h, 0 disables timeout")
+	fs.BoolVar(&cfg.ListFormats, "list", false, "list available formats or playlist items and exit")
+	fs.BoolVar(&cfg.Playlist, "playlist", false, "treat the URL or ID as a playlist")
 	fs.BoolVar(&cfg.RightsOK, "i-have-rights", false, "confirm you own, license, or have permission")
 	fs.StringVar(&cfg.VideoQuality, "quality", "best", "video quality: best, 360p, 720p, 1080p, hd720, hd1080, or itag")
 	fs.BoolVar(&cfg.AudioOnly, "audio-only", false, "download audio only")
@@ -108,6 +110,10 @@ func (c Config) Validate() error {
 
 	if c.Timeout < 0 {
 		return errors.New("-timeout cannot be negative")
+	}
+
+	if c.Playlist && strings.TrimSpace(c.Filename) != "" {
+		return errors.New("-filename cannot be used with a playlist; filenames come from each video title")
 	}
 
 	if c.AudioFormat == "" {

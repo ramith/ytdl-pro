@@ -2,12 +2,13 @@
 
 _ytdl-pro() {
   _arguments -s -S \
-    '(-url *)-url[YouTube video URL or video ID]:URL or video ID:' \
+    '(-url *)-url[YouTube video or playlist URL/ID]:URL or ID:' \
     '-out[Output directory]:directory:_directories' \
     '-filename[Explicit output filename]:filename:_files' \
     '-overwrite[Overwrite an existing output file]' \
-    '-timeout[Overall timeout, or 0 to disable]:duration:(10m 30m 1h 2h 0)' \
+    '-timeout[Operation timeout; applied per playlist item]:duration:(10m 30m 1h 2h 0)' \
     '-list[List available formats and exit]' \
+    '-playlist[Treat the URL or ID as a playlist]' \
     '-i-have-rights[Confirm permission to download]' \
     '-quality[Video quality]:quality:(best 144p 240p 360p 480p 720p 1080p hd720 hd1080)' \
     '-audio-only[Download audio only]' \
@@ -16,7 +17,7 @@ _ytdl-pro() {
     '-mp3-mode[MP3 encoding mode]:mode:(vbr bitrate)' \
     '-mp3-vbr[MP3 VBR quality]:quality:(0 1 2 3 4 5 6 7 8 9)' \
     '-mp3-bitrate[MP3 bitrate]:bitrate:(128k 192k 256k 320k)' \
-    '1:YouTube URL or video ID:'
+    '1:YouTube URL or ID:'
 }
 
 _ytdl-pro "$@"

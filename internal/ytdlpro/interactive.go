@@ -23,7 +23,7 @@ func CompleteInteractive(in io.Reader, out io.Writer, cfg Config) (Config, error
 	fmt.Fprintln(out, "Press Enter to accept the value shown in brackets.")
 	fmt.Fprintln(out)
 
-	rightsOK, err := prompt.yesNo("Do you own, license, or have permission to download this video?", false)
+	rightsOK, err := prompt.yesNo("Do you own, license, or have permission to download this content?", false)
 	if err != nil {
 		return Config{}, err
 	}
