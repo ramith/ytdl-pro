@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -22,6 +23,11 @@ func RequireFFmpeg() error {
 }
 
 func (f FFmpeg) TranscodeAudio(ctx context.Context, inputPath, outputPath string, cfg Config) error {
+	muxer, err := FFmpegMuxerForPath(outputPath)
+	if err != nil {
+		return err
+	}
+
 	return WriteByTempOutput(outputPath, cfg.Overwrite, func(tmpOut string) error {
 		args := f.baseArgs()
 		args = append(args, "-i", inputPath, "-vn", "-map", "0:a:0")
@@ -48,12 +54,17 @@ func (f FFmpeg) TranscodeAudio(ctx context.Context, inputPath, outputPath string
 			return fmt.Errorf("unsupported audio conversion format %q", cfg.AudioFormat)
 		}
 
-		args = append(args, tmpOut)
+		args = append(args, "-f", muxer, tmpOut)
 		return runFFmpeg(ctx, args)
 	})
 }
 
 func (f FFmpeg) Mux(ctx context.Context, videoPath, audioPath, outputPath string) error {
+	muxer, err := FFmpegMuxerForPath(outputPath)
+	if err != nil {
+		return err
+	}
+
 	return WriteByTempOutput(outputPath, f.Overwrite, func(tmpOut string) error {
 		args := f.baseArgs()
 		args = append(args,
@@ -63,17 +74,36 @@ func (f FFmpeg) Mux(ctx context.Context, videoPath, audioPath, outputPath string
 			"-map", "1:a:0",
 			"-c", "copy",
 			"-shortest",
+			"-f", muxer,
 			tmpOut,
 		)
 		return runFFmpeg(ctx, args)
 	})
 }
 
-func (f FFmpeg) baseArgs() []string {
-	if f.Overwrite {
-		return []string{"-hide_banner", "-y"}
+func FFmpegMuxerForPath(path string) (string, error) {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".mp3":
+		return "mp3", nil
+	case ".flac":
+		return "flac", nil
+	case ".wav":
+		return "wav", nil
+	case ".m4a":
+		return "ipod", nil
+	case ".mp4":
+		return "mp4", nil
+	case ".mkv":
+		return "matroska", nil
+	default:
+		return "", fmt.Errorf("cannot determine ffmpeg output format for %q", path)
 	}
-	return []string{"-hide_banner", "-n"}
+}
+
+func (f FFmpeg) baseArgs() []string {
+	// Atomic output paths are pre-created and safe to replace. The final output
+	// collision policy is enforced before FFmpeg runs.
+	return []string{"-hide_banner", "-y"}
 }
 
 func runFFmpeg(ctx context.Context, args []string) error {

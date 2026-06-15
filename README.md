@@ -41,6 +41,21 @@ Install it into your configured `GOBIN` or `GOPATH/bin`:
 make install
 ```
 
+Install zsh tab completion:
+
+```sh
+make install-completion
+```
+
+Your zsh configuration must include the completion directory in `fpath` and
+initialize completions:
+
+```sh
+fpath=(/opt/homebrew/share/zsh/site-functions $fpath)
+autoload -Uz compinit
+compinit
+```
+
 ## Usage
 
 For an interactive download, provide only the URL or video ID and answer the
@@ -143,6 +158,7 @@ make build
 make test
 make fmt
 make tidy
+make install-completion
 make clean
 ```
 
