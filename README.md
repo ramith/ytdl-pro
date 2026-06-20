@@ -2,10 +2,10 @@
 
 `ytdl-pro` is a command-line YouTube downloader written in Go. It can download
 single videos or complete playlists, list available formats, merge separate
-video and audio streams, and convert audio to MP3, FLAC, WAV, or ALAC.
+video and audio streams, and save audio as original source, smart auto-selected
+audio, MP3, FLAC, WAV, or ALAC.
 
 Only download videos that you own, license, or have permission to download.
-Downloads require the explicit `-i-have-rights` flag.
 
 ## Requirements
 
@@ -65,8 +65,8 @@ questions:
 ./bin/ytdl-pro "https://www.youtube.com/watch?v=VIDEO_ID"
 ```
 
-The wizard confirms download permission and asks whether to download video or
-audio, which quality and output format to use, and where to save the file.
+The wizard asks whether to download video or audio, which quality and output
+format to use, and where to save the file.
 The filename comes from the video title. If that filename already exists, a
 numbered suffix such as ` (1)` or ` (2)` is added automatically. Press Enter
 to accept each default.
@@ -80,6 +80,12 @@ interactive wizard and they are applied to every playlist item:
 ytdl-pro "https://www.youtube.com/playlist?list=PLAYLIST_ID"
 ```
 
+`music.youtube.com` playlist links are also supported and handled the same way:
+
+```sh
+ytdl-pro "https://music.youtube.com/playlist?list=PLAYLIST_ID"
+```
+
 For non-interactive playlist downloads, use the same switches as a single
 video:
 
@@ -90,8 +96,7 @@ ytdl-pro \
   -audio-format mp3 \
   -mp3-mode vbr \
   -mp3-vbr 0 \
-  -out ./playlist-downloads \
-  -i-have-rights
+  -out ./playlist-downloads
 ```
 
 Normal playlist URLs and IDs are detected automatically. Use `-playlist` to
@@ -127,8 +132,7 @@ Download the best available video:
 
 ```sh
 ./bin/ytdl-pro \
-  -url "https://www.youtube.com/watch?v=VIDEO_ID" \
-  -i-have-rights
+  -url "https://www.youtube.com/watch?v=VIDEO_ID"
 ```
 
 Download a specific video quality:
@@ -137,8 +141,7 @@ Download a specific video quality:
 ./bin/ytdl-pro \
   -url "https://www.youtube.com/watch?v=VIDEO_ID" \
   -quality 1080p \
-  -out ./downloads \
-  -i-have-rights
+  -out ./downloads
 ```
 
 Quality may be `best`, a resolution such as `720p`, a YouTube quality label
@@ -149,8 +152,7 @@ Download the best original audio stream:
 ```sh
 ./bin/ytdl-pro \
   -url "https://www.youtube.com/watch?v=VIDEO_ID" \
-  -audio-only \
-  -i-have-rights
+  -audio-only
 ```
 
 Download and convert audio to VBR MP3:
@@ -161,8 +163,7 @@ Download and convert audio to VBR MP3:
   -audio-only \
   -audio-format mp3 \
   -mp3-mode vbr \
-  -mp3-vbr 0 \
-  -i-have-rights
+  -mp3-vbr 0
 ```
 
 Download and convert audio to a 192 kbps MP3:
@@ -173,8 +174,20 @@ Download and convert audio to a 192 kbps MP3:
   -audio-only \
   -audio-format mp3 \
   -mp3-mode bitrate \
-  -mp3-bitrate 192k \
-  -i-have-rights
+  -mp3-bitrate 192k
+```
+
+Use `-audio-format smart` to prefer a lossless M4A source when YouTube exposes
+one, otherwise fall back to the highest-quality source and transcode it using
+your MP3 settings:
+
+```sh
+./bin/ytdl-pro \
+  -url "https://www.youtube.com/watch?v=VIDEO_ID" \
+  -audio-only \
+  -audio-format smart \
+  -mp3-mode vbr \
+  -mp3-vbr 0
 ```
 
 Other audio output formats are `flac`, `wav`, and `alac`. Source audio quality
@@ -213,8 +226,7 @@ Commands with additional flags remain non-interactive:
 ```sh
 ./bin/ytdl-pro \
   -url "https://www.youtube.com/watch?v=VIDEO_ID" \
-  -quality 1080p \
-  -i-have-rights
+  -quality 1080p
 ```
 
 ## Development

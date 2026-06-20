@@ -2,7 +2,6 @@ package ytdlpro
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -23,15 +22,6 @@ func CompleteInteractive(in io.Reader, out io.Writer, cfg Config) (Config, error
 	fmt.Fprintln(out, "Press Enter to accept the value shown in brackets.")
 	fmt.Fprintln(out)
 
-	rightsOK, err := prompt.yesNo("Do you own, license, or have permission to download this content?", false)
-	if err != nil {
-		return Config{}, err
-	}
-	if !rightsOK {
-		return Config{}, errors.New("download cancelled: permission confirmation is required")
-	}
-	cfg.RightsOK = true
-
 	kind, err := prompt.choice("Download type", "video", "video", "audio")
 	if err != nil {
 		return Config{}, err
@@ -47,7 +37,7 @@ func CompleteInteractive(in io.Reader, out io.Writer, cfg Config) (Config, error
 		audioFormat, err := prompt.choice(
 			"Audio output format",
 			string(cfg.AudioFormat),
-			"original", "mp3", "flac", "wav", "alac",
+			"original", "smart", "mp3", "flac", "wav", "alac",
 		)
 		if err != nil {
 			return Config{}, err

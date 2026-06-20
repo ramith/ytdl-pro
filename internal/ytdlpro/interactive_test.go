@@ -42,12 +42,12 @@ func TestCompleteInteractiveVideoDefaults(t *testing.T) {
 	}
 
 	var output bytes.Buffer
-	cfg, err = CompleteInteractive(strings.NewReader("y\n\n\n\n"), &output, cfg)
+	cfg, err = CompleteInteractive(strings.NewReader("\n\n\n"), &output, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !cfg.RightsOK || cfg.AudioOnly || cfg.VideoQuality != "best" || cfg.OutDir != "." || cfg.Overwrite {
+	if cfg.AudioOnly || cfg.VideoQuality != "best" || cfg.OutDir != "." || cfg.Overwrite {
 		t.Fatalf("unexpected config: %+v", cfg)
 	}
 }
@@ -58,7 +58,7 @@ func TestCompleteInteractiveMP3(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	input := "yes\naudio\nhigh\nmp3\nbitrate\n320k\n./downloads\n"
+	input := "audio\nhigh\nmp3\nbitrate\n320k\n./downloads\n"
 	var output bytes.Buffer
 	cfg, err = CompleteInteractive(strings.NewReader(input), &output, cfg)
 	if err != nil {

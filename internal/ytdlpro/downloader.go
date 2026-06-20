@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"strings"
 
 	"github.com/kkdai/youtube/v2"
 )
@@ -19,12 +20,21 @@ func (d Downloader) DownloadAudio(ctx context.Context, video *youtube.Video, cfg
 		return err
 	}
 
-	if cfg.AudioFormat == AudioOriginal {
+	resolvedFormat := cfg.AudioFormat
+	if cfg.AudioFormat == AudioSmart {
+		if isLosslessM4A(source) {
+			resolvedFormat = AudioOriginal
+		} else {
+			resolvedFormat = AudioMP3
+		}
+	}
+
+	if resolvedFormat == AudioOriginal {
 		outPath, err := ResolveOutputPath(cfg.OutDir, cfg.Filename, video.Title, ExtensionForMIME(source.MimeType, ".audio"), cfg.Overwrite)
 		if err != nil {
 			return err
 		}
-		PrintSelectedAudio(source, string(cfg.AudioFormat))
+		PrintSelectedAudio(source, outputLabel(cfg.AudioFormat, resolvedFormat, source))
 
 		written, err := d.downloadFormatAtomically(ctx, video, source, outPath, cfg.Overwrite)
 		if err != nil {
@@ -40,7 +50,7 @@ func (d Downloader) DownloadAudio(ctx context.Context, video *youtube.Video, cfg
 		return err
 	}
 
-	outPath, err := ResolveOutputPath(cfg.OutDir, cfg.Filename, video.Title, AudioFormatExtension(cfg.AudioFormat), cfg.Overwrite)
+	outPath, err := ResolveOutputPath(cfg.OutDir, cfg.Filename, video.Title, AudioFormatExtension(resolvedFormat), cfg.Overwrite)
 	if err != nil {
 		return err
 	}
@@ -54,7 +64,7 @@ func (d Downloader) DownloadAudio(ctx context.Context, video *youtube.Video, cfg
 	}
 	defer cleanup()
 
-	PrintSelectedAudio(source, string(cfg.AudioFormat))
+	PrintSelectedAudio(source, outputLabel(cfg.AudioFormat, resolvedFormat, source))
 
 	written, err := d.downloadFormatAtomically(ctx, video, source, sourcePath, true)
 	if err != nil {
@@ -63,12 +73,29 @@ func (d Downloader) DownloadAudio(ctx context.Context, video *youtube.Video, cfg
 	fmt.Printf("source bytes=%d\n", written)
 
 	ff := FFmpeg{Overwrite: cfg.Overwrite}
-	if err := ff.TranscodeAudio(ctx, sourcePath, outPath, cfg); err != nil {
+	transcodeCfg := cfg
+	transcodeCfg.AudioFormat = resolvedFormat
+	if err := ff.TranscodeAudio(ctx, sourcePath, outPath, transcodeCfg); err != nil {
 		return err
 	}
 
 	fmt.Println("downloaded:", outPath)
 	return nil
+}
+
+func isLosslessM4A(format *youtube.Format) bool {
+	mime := strings.ToLower(format.MimeType)
+	return strings.Contains(mime, "audio/mp4") && strings.Contains(mime, "alac")
+}
+
+func outputLabel(requested AudioFormat, resolved AudioFormat, source *youtube.Format) string {
+	if requested != AudioSmart {
+		return string(resolved)
+	}
+	if resolved == AudioOriginal {
+		return "smart-lossless-m4a"
+	}
+	return "smart-mp3"
 }
 
 func (d Downloader) DownloadVideo(ctx context.Context, video *youtube.Video, cfg Config) error {

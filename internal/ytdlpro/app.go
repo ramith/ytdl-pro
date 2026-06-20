@@ -17,12 +17,14 @@ var playlistIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{13,42}$`)
 
 func Run(ctx context.Context, cfg Config) error {
 	client := youtube.Client{}
+	resolvedURL := NormalizeYouTubeURL(cfg.URL)
 
 	if cfg.Playlist || IsPlaylistURL(cfg.URL) {
+		cfg.URL = resolvedURL
 		return runPlaylist(ctx, &client, cfg)
 	}
 
-	video, err := client.GetVideoContext(ctx, cfg.URL)
+	video, err := client.GetVideoContext(ctx, resolvedURL)
 	if err != nil {
 		return fmt.Errorf("load video metadata: %w", err)
 	}
@@ -135,4 +137,24 @@ func IsPlaylistURL(raw string) bool {
 
 func IsRadioMixID(id string) bool {
 	return strings.HasPrefix(strings.ToUpper(strings.TrimSpace(id)), "RD")
+}
+
+func NormalizeYouTubeURL(raw string) string {
+	raw = strings.TrimSpace(raw)
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return raw
+	}
+
+	host := strings.ToLower(parsed.Host)
+	switch host {
+	case "music.youtube.com", "m.youtube.com":
+		parsed.Host = "www.youtube.com"
+		if parsed.Scheme == "" {
+			parsed.Scheme = "https"
+		}
+		return parsed.String()
+	default:
+		return raw
+	}
 }

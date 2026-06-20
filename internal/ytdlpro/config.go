@@ -14,6 +14,7 @@ type AudioFormat string
 
 const (
 	AudioOriginal AudioFormat = "original"
+	AudioSmart    AudioFormat = "smart"
 	AudioMP3      AudioFormat = "mp3"
 	AudioFLAC     AudioFormat = "flac"
 	AudioWAV      AudioFormat = "wav"
@@ -57,11 +58,11 @@ func ParseConfig(args []string) (Config, error) {
 	fs.DurationVar(&cfg.Timeout, "timeout", 30*time.Minute, "operation timeout; applied per playlist item, e.g. 10m, 1h, 0 disables timeout")
 	fs.BoolVar(&cfg.ListFormats, "list", false, "list available formats or playlist items and exit")
 	fs.BoolVar(&cfg.Playlist, "playlist", false, "treat the URL or ID as a playlist")
-	fs.BoolVar(&cfg.RightsOK, "i-have-rights", false, "confirm you own, license, or have permission")
+	fs.BoolVar(&cfg.RightsOK, "i-have-rights", false, "deprecated: no-op")
 	fs.StringVar(&cfg.VideoQuality, "quality", "best", "video quality: best, 360p, 720p, 1080p, hd720, hd1080, or itag")
 	fs.BoolVar(&cfg.AudioOnly, "audio-only", false, "download audio only")
 	fs.StringVar(&cfg.AudioQuality, "audio-quality", "best", "source audio quality: best, high, medium, low, 64k, 128k, 192k, or itag")
-	fs.Var((*audioFormatValue)(&cfg.AudioFormat), "audio-format", "audio output: original, mp3, flac, lossless, wav, or alac")
+	fs.Var((*audioFormatValue)(&cfg.AudioFormat), "audio-format", "audio output: original, smart, mp3, flac, lossless, wav, or alac")
 	fs.Var((*mp3ModeValue)(&cfg.MP3Mode), "mp3-mode", "MP3 mode: vbr or bitrate")
 	fs.IntVar(&cfg.MP3VBR, "mp3-vbr", 0, "MP3 VBR quality: 0 best/largest, 9 lowest/smallest")
 	fs.StringVar(&cfg.MP3Bitrate, "mp3-bitrate", "192k", "MP3 bitrate for -mp3-mode bitrate, e.g. 128k, 192k, 320k")
@@ -104,10 +105,6 @@ func (c Config) Validate() error {
 		return errors.New("missing -url")
 	}
 
-	if !c.ListFormats && !c.RightsOK {
-		return errors.New("refusing download: pass -i-have-rights only for owned, licensed, or permitted videos")
-	}
-
 	if c.Timeout < 0 {
 		return errors.New("-timeout cannot be negative")
 	}
@@ -124,11 +121,11 @@ func (c Config) Validate() error {
 		return errors.New("missing -mp3-mode")
 	}
 
-	if c.AudioFormat != AudioMP3 && (c.MP3Mode != MP3VBR || c.MP3VBR != 0 || c.MP3Bitrate != "192k") {
-		return errors.New("MP3 options require -audio-format mp3")
+	if c.AudioFormat != AudioMP3 && c.AudioFormat != AudioSmart && (c.MP3Mode != MP3VBR || c.MP3VBR != 0 || c.MP3Bitrate != "192k") {
+		return errors.New("MP3 options require -audio-format mp3 or smart")
 	}
 
-	if c.AudioFormat == AudioMP3 {
+	if c.AudioFormat == AudioMP3 || c.AudioFormat == AudioSmart {
 		if c.MP3Mode == MP3VBR {
 			if c.MP3VBR < 0 || c.MP3VBR > 9 {
 				return errors.New("-mp3-vbr must be between 0 and 9")
@@ -155,6 +152,8 @@ func (v *audioFormatValue) Set(raw string) error {
 	switch value {
 	case "", "original":
 		*v = audioFormatValue(AudioOriginal)
+	case "smart", "auto":
+		*v = audioFormatValue(AudioSmart)
 	case "mp3":
 		*v = audioFormatValue(AudioMP3)
 	case "flac", "lossless":

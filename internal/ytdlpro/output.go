@@ -103,6 +103,8 @@ func AudioFormatExtension(format AudioFormat) string {
 	switch format {
 	case AudioMP3:
 		return ".mp3"
+	case AudioSmart:
+		return ".mp3"
 	case AudioFLAC:
 		return ".flac"
 	case AudioWAV:
