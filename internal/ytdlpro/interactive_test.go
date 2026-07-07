@@ -22,8 +22,8 @@ func TestParseConfigPositionalURLStartsInteractiveMode(t *testing.T) {
 
 func TestParseConfigFlagsRemainNonInteractive(t *testing.T) {
 	cfg, err := ParseConfig([]string{
-		"-url", "https://youtu.be/example",
-		"-i-have-rights",
+		"download",
+		"https://youtu.be/example",
 		"-audio-only",
 	})
 	if err != nil {

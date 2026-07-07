@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -15,20 +16,25 @@ import (
 func main() {
 	cfg, err := ytdlpro.ParseConfig(os.Args[1:])
 	if err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			os.Exit(0)
+		}
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(2)
 	}
 
-	cfg, err = ytdlpro.CompleteInteractive(os.Stdin, os.Stdout, cfg)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
-		os.Exit(2)
+	if cfg.Command != "enrich" {
+		cfg, err = ytdlpro.CompleteInteractive(os.Stdin, os.Stdout, cfg)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			os.Exit(2)
+		}
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	if cfg.Timeout > 0 && !cfg.Playlist && !ytdlpro.IsPlaylistURL(cfg.URL) {
+	if cfg.Timeout > 0 && cfg.Command != "enrich" && !cfg.Playlist && !ytdlpro.IsPlaylistURL(cfg.URL) {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, cfg.Timeout)
 		defer cancel()

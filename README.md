@@ -11,6 +11,8 @@ Only download videos that you own, license, or have permission to download.
 
 - Go 1.26 or newer
 - FFmpeg for video/audio merging and audio conversion
+- `ffprobe`, which is included with standard FFmpeg installs, for metadata
+  verification
 
 On macOS, FFmpeg can be installed with Homebrew:
 
@@ -58,11 +60,17 @@ compinit
 
 ## Usage
 
-For an interactive download, provide only the URL or video ID and answer the
+For the shortest path, provide only the URL or video ID and answer the
 questions:
 
 ```sh
 ./bin/ytdl-pro "https://www.youtube.com/watch?v=VIDEO_ID"
+```
+
+For explicit non-interactive usage, use the `download` command:
+
+```sh
+./bin/ytdl-pro download "https://www.youtube.com/watch?v=VIDEO_ID"
 ```
 
 The wizard asks whether to download video or audio, which quality and output
@@ -77,21 +85,21 @@ Playlist URLs are detected automatically. Choose options once in the
 interactive wizard and they are applied to every playlist item:
 
 ```sh
-ytdl-pro "https://www.youtube.com/playlist?list=PLAYLIST_ID"
+ytdl-pro download "https://www.youtube.com/playlist?list=PLAYLIST_ID"
 ```
 
 `music.youtube.com` playlist links are also supported and handled the same way:
 
 ```sh
-ytdl-pro "https://music.youtube.com/playlist?list=PLAYLIST_ID"
+ytdl-pro download "https://music.youtube.com/playlist?list=PLAYLIST_ID"
 ```
 
 For non-interactive playlist downloads, use the same switches as a single
 video:
 
 ```sh
-ytdl-pro \
-  -url "https://www.youtube.com/playlist?list=PLAYLIST_ID" \
+ytdl-pro download \
+  "https://www.youtube.com/playlist?list=PLAYLIST_ID" \
   -audio-only \
   -audio-format mp3 \
   -mp3-mode vbr \
@@ -103,7 +111,7 @@ Normal playlist URLs and IDs are detected automatically. Use `-playlist` to
 force playlist handling for an unusual URL or ID:
 
 ```sh
-ytdl-pro -url "PLAYLIST_ID" -playlist -list
+ytdl-pro download "PLAYLIST_ID" -playlist -list
 ```
 
 YouTube radio/mix links (`list=RD...`) download the currently selected video
@@ -122,24 +130,27 @@ Show all options:
 ./bin/ytdl-pro -h
 ```
 
+Most command-line flags already have safe defaults, so for common cases you can
+usually provide just the URL and optionally `-audio-only`.
+
 List the formats available for a video:
 
 ```sh
-./bin/ytdl-pro -url "https://www.youtube.com/watch?v=VIDEO_ID" -list
+./bin/ytdl-pro download "https://www.youtube.com/watch?v=VIDEO_ID" -list
 ```
 
 Download the best available video:
 
 ```sh
-./bin/ytdl-pro \
-  -url "https://www.youtube.com/watch?v=VIDEO_ID"
+./bin/ytdl-pro download \
+  "https://www.youtube.com/watch?v=VIDEO_ID"
 ```
 
 Download a specific video quality:
 
 ```sh
-./bin/ytdl-pro \
-  -url "https://www.youtube.com/watch?v=VIDEO_ID" \
+./bin/ytdl-pro download \
+  "https://www.youtube.com/watch?v=VIDEO_ID" \
   -quality 1080p \
   -out ./downloads
 ```
@@ -150,16 +161,16 @@ such as `hd1080`, or an itag shown by `-list`.
 Download the best original audio stream:
 
 ```sh
-./bin/ytdl-pro \
-  -url "https://www.youtube.com/watch?v=VIDEO_ID" \
+./bin/ytdl-pro download \
+  "https://www.youtube.com/watch?v=VIDEO_ID" \
   -audio-only
 ```
 
 Download and convert audio to VBR MP3:
 
 ```sh
-./bin/ytdl-pro \
-  -url "https://www.youtube.com/watch?v=VIDEO_ID" \
+./bin/ytdl-pro download \
+  "https://www.youtube.com/watch?v=VIDEO_ID" \
   -audio-only \
   -audio-format mp3 \
   -mp3-mode vbr \
@@ -169,8 +180,8 @@ Download and convert audio to VBR MP3:
 Download and convert audio to a 192 kbps MP3:
 
 ```sh
-./bin/ytdl-pro \
-  -url "https://www.youtube.com/watch?v=VIDEO_ID" \
+./bin/ytdl-pro download \
+  "https://www.youtube.com/watch?v=VIDEO_ID" \
   -audio-only \
   -audio-format mp3 \
   -mp3-mode bitrate \
@@ -182,8 +193,8 @@ one, otherwise fall back to the highest-quality source and transcode it using
 your MP3 settings:
 
 ```sh
-./bin/ytdl-pro \
-  -url "https://www.youtube.com/watch?v=VIDEO_ID" \
+./bin/ytdl-pro download \
+  "https://www.youtube.com/watch?v=VIDEO_ID" \
   -audio-only \
   -audio-format smart \
   -mp3-mode vbr \
@@ -202,6 +213,67 @@ Useful output options:
 -timeout 1h            Set the operation timeout; per item for playlists
 -timeout 0             Disable the timeout
 ```
+
+Default non-interactive behavior:
+
+```text
+-quality best
+-audio-quality best
+-audio-format original
+-mp3-mode vbr
+-mp3-vbr 0
+-mp3-bitrate 192k
+-timeout 30m
+-out .
+```
+
+### Metadata Enrichment
+
+`ytdl-pro enrich` can enrich tags for a YouTube track, a local audio file, or a
+directory of existing audio files. Normal use does not require any separate
+model server or daemon process.
+
+Simple examples:
+
+```sh
+ytdl-pro enrich "https://youtube.com/watch?v=VIDEO_ID"
+ytdl-pro enrich ./song.mp3
+ytdl-pro enrich ./Music --recursive
+```
+
+What the command does:
+
+- Uses the download metadata, existing tags, and structured candidate lookup.
+- Writes only source-backed fields that pass the confidence thresholds.
+- Falls back to deterministic scoring if the local model runtime is unavailable.
+- Continues processing the rest of a directory or playlist even if one file fails.
+
+Status labels:
+
+```text
+enriched
+partially enriched
+base tagged
+skipped
+failed
+```
+
+Useful options:
+
+```text
+--recursive                       Recurse into nested directories when enriching a folder
+--dry-run                         Analyze without writing tags
+--review                          Mark likely matches for review instead of writing
+--write-base-tags                 Write base source tags when enrichment is skipped
+--json-report report.json         Write a JSON report for the run
+--explain                         Show why a file was or was not changed
+--debug                           Show internal diagnostics
+```
+
+When metadata writing is enabled, tag rewriting uses `ffmpeg` stream copy and
+keeps the audio payload intact. The rewritten file is verified with `ffprobe`
+before replacing the original. A backup file such as `track.mp3.bak` is kept
+unless `--no-backup` is provided.
 
 ## Make Targets
 
@@ -250,6 +322,27 @@ make fmt
 make test
 make build
 ```
+
+Build with the embedded local runtime:
+
+```sh
+go build -tags libllama -o bin/ytdl-pro ./cmd/ytdl-pro
+```
+
+Bootstrap the native runtime, local model, and tagged binary in one step:
+
+```sh
+go run ./cmd/ytdl-pro setup
+```
+
+The tagged build expects:
+
+- `libllama` to be available either in `./lib` or on the system library path
+- a local GGUF model file at `./models/qwen3-1.7b-instruct-q4_k_m.gguf`, or an
+  override passed through `-metadata-model-path`
+
+Without the `libllama` build tag, the binary still builds and runs using
+deterministic metadata scoring only.
 
 ## License
 

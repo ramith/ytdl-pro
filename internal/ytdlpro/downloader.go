@@ -8,10 +8,19 @@ import (
 	"strings"
 
 	"github.com/kkdai/youtube/v2"
+	"ytdl-pro/internal/ytdlpro/metadata"
 )
 
 type Downloader struct {
-	Client *youtube.Client
+	Client        *youtube.Client
+	Metadata      *metadata.Service
+	MetadataMode  MetadataOutputOptions
+	PlaylistTitle string
+}
+
+type MetadataOutputOptions struct {
+	Explain bool
+	Debug   bool
 }
 
 func (d Downloader) DownloadAudio(ctx context.Context, video *youtube.Video, cfg Config) error {
@@ -43,6 +52,7 @@ func (d Downloader) DownloadAudio(ctx context.Context, video *youtube.Video, cfg
 
 		fmt.Printf("written bytes=%d\n", written)
 		fmt.Println("downloaded:", outPath)
+		d.processMetadata(ctx, video, outPath)
 		return nil
 	}
 
@@ -80,6 +90,7 @@ func (d Downloader) DownloadAudio(ctx context.Context, video *youtube.Video, cfg
 	}
 
 	fmt.Println("downloaded:", outPath)
+	d.processMetadata(ctx, video, outPath)
 	return nil
 }
 
@@ -191,4 +202,27 @@ func (d Downloader) downloadFormatAtomically(ctx context.Context, video *youtube
 
 		return written, nil
 	})
+}
+
+func (d Downloader) processMetadata(ctx context.Context, video *youtube.Video, path string) {
+	if d.Metadata == nil {
+		return
+	}
+
+	result := d.Metadata.Process(ctx, metadata.Request{
+		Path:          path,
+		VideoID:       video.ID,
+		URL:           "https://www.youtube.com/watch?v=" + video.ID,
+		Title:         video.Title,
+		Channel:       video.Author,
+		Description:   video.Description,
+		PlaylistTitle: d.PlaylistTitle,
+		Duration:      video.Duration,
+		UploadDate:    video.PublishDate,
+	})
+
+	if result.Action == "" {
+		return
+	}
+	printMetadataResult(result, d.MetadataMode.Explain, d.MetadataMode.Debug)
 }

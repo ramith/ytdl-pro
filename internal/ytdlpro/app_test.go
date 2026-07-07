@@ -1,6 +1,11 @@
 package ytdlpro
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+)
 
 func TestIsPlaylistURL(t *testing.T) {
 	tests := []struct {
@@ -66,18 +71,10 @@ func TestPlaylistRejectsExplicitFilename(t *testing.T) {
 	}
 }
 
-func TestParseConfigNoRightsFlagRequired(t *testing.T) {
-	_, err := ParseConfig([]string{
-		"-url", "https://www.youtube.com/watch?v=abc123",
-	})
-	if err != nil {
-		t.Fatalf("expected config to validate without -i-have-rights, got %v", err)
-	}
-}
-
 func TestParseConfigSmartAudioAllowsMP3Options(t *testing.T) {
 	cfg, err := ParseConfig([]string{
-		"-url", "https://www.youtube.com/watch?v=abc123",
+		"download",
+		"https://www.youtube.com/watch?v=abc123",
 		"-audio-only",
 		"-audio-format", "smart",
 		"-mp3-mode", "vbr",
@@ -89,5 +86,246 @@ func TestParseConfigSmartAudioAllowsMP3Options(t *testing.T) {
 
 	if cfg.AudioFormat != AudioSmart {
 		t.Fatalf("AudioFormat = %q, want %q", cfg.AudioFormat, AudioSmart)
+	}
+}
+
+func TestParseConfigEnrichDryRun(t *testing.T) {
+	cfg, err := ParseConfig([]string{
+		"enrich",
+		"https://www.youtube.com/watch?v=abc123",
+		"--dry-run",
+	})
+	if err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+
+	if !cfg.Metadata.Enabled {
+		t.Fatal("expected metadata pipeline to be enabled")
+	}
+	if !cfg.Metadata.DryRun {
+		t.Fatal("expected metadata mode to default to dry-run")
+	}
+	if cfg.Metadata.Write {
+		t.Fatal("expected metadata writes to remain disabled by default")
+	}
+}
+
+func TestParseConfigEnrichDefaultsToWrite(t *testing.T) {
+	cfg, err := ParseConfig([]string{
+		"enrich",
+		"https://www.youtube.com/watch?v=abc123",
+	})
+	if err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+
+	if !cfg.Metadata.Enabled {
+		t.Fatal("expected metadata pipeline to be enabled")
+	}
+	if cfg.Metadata.DryRun {
+		t.Fatal("expected enrich to default to writable mode")
+	}
+	if !cfg.Metadata.Write {
+		t.Fatal("expected enrich writes to be enabled")
+	}
+}
+
+func TestDefaultConfigHasSensibleDefaults(t *testing.T) {
+	cfg := DefaultConfig()
+
+	if cfg.OutDir != "." {
+		t.Fatalf("OutDir = %q, want %q", cfg.OutDir, ".")
+	}
+	if cfg.Timeout <= 0 {
+		t.Fatalf("Timeout = %s, want positive default", cfg.Timeout)
+	}
+	if cfg.VideoQuality != "best" {
+		t.Fatalf("VideoQuality = %q, want %q", cfg.VideoQuality, "best")
+	}
+	if cfg.AudioQuality != "best" {
+		t.Fatalf("AudioQuality = %q, want %q", cfg.AudioQuality, "best")
+	}
+	if cfg.AudioFormat != AudioOriginal {
+		t.Fatalf("AudioFormat = %q, want %q", cfg.AudioFormat, AudioOriginal)
+	}
+	if cfg.MP3Mode != MP3VBR {
+		t.Fatalf("MP3Mode = %q, want %q", cfg.MP3Mode, MP3VBR)
+	}
+	if cfg.MP3Bitrate != "192k" {
+		t.Fatalf("MP3Bitrate = %q, want %q", cfg.MP3Bitrate, "192k")
+	}
+	if cfg.Metadata.Model != "qwen3-1.7b-instruct-q4_k_m" {
+		t.Fatalf("Metadata.Model = %q, want %q", cfg.Metadata.Model, "qwen3-1.7b-instruct-q4_k_m")
+	}
+	if cfg.Metadata.Runtime != "libllama" {
+		t.Fatalf("Metadata.Runtime = %q, want %q", cfg.Metadata.Runtime, "libllama")
+	}
+}
+
+func TestParseConfigUsesDefaultsForNonInteractiveFlags(t *testing.T) {
+	cfg, err := ParseConfig([]string{
+		"download",
+		"https://www.youtube.com/watch?v=abc123",
+		"-audio-only",
+	})
+	if err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+
+	if cfg.AudioFormat != AudioOriginal {
+		t.Fatalf("AudioFormat = %q, want %q", cfg.AudioFormat, AudioOriginal)
+	}
+	if cfg.MP3Mode != MP3VBR {
+		t.Fatalf("MP3Mode = %q, want %q", cfg.MP3Mode, MP3VBR)
+	}
+	if cfg.AudioQuality != "best" {
+		t.Fatalf("AudioQuality = %q, want %q", cfg.AudioQuality, "best")
+	}
+	if cfg.Metadata.Timeout != 2*time.Minute {
+		t.Fatalf("Metadata.Timeout = %s, want %s", cfg.Metadata.Timeout, 2*time.Minute)
+	}
+}
+
+func TestParseConfigAllowsEnrichPathWithoutURL(t *testing.T) {
+	dir := t.TempDir()
+	track := filepath.Join(dir, "track.mp3")
+	if err := os.WriteFile(track, []byte("test"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := ParseConfig([]string{
+		"enrich",
+		track,
+	})
+	if err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+
+	if cfg.Metadata.Path != track {
+		t.Fatalf("Metadata.Path = %q, want %q", cfg.Metadata.Path, track)
+	}
+	if cfg.URL != "" {
+		t.Fatalf("URL = %q, want empty", cfg.URL)
+	}
+}
+
+func TestParseConfigDownloadCommandUsesDefaults(t *testing.T) {
+	cfg, err := ParseConfig([]string{
+		"download",
+		"https://www.youtube.com/watch?v=abc123",
+	})
+	if err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+
+	if cfg.Command != "download" {
+		t.Fatalf("Command = %q, want %q", cfg.Command, "download")
+	}
+	if cfg.Interactive {
+		t.Fatal("expected explicit download command to be non-interactive")
+	}
+}
+
+func TestParseConfigBareURLStartsInteractiveMode(t *testing.T) {
+	cfg, err := ParseConfig([]string{"https://www.youtube.com/watch?v=abc123"})
+	if err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+
+	if cfg.Command != "download" {
+		t.Fatalf("Command = %q, want %q", cfg.Command, "download")
+	}
+	if !cfg.Interactive {
+		t.Fatal("expected bare URL shortcut to remain interactive")
+	}
+}
+
+func TestParseConfigEnrichPositionalPath(t *testing.T) {
+	dir := t.TempDir()
+	track := filepath.Join(dir, "track.mp3")
+	if err := os.WriteFile(track, []byte("test"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := ParseConfig([]string{
+		"enrich",
+		track,
+	})
+	if err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+
+	if cfg.Metadata.Path != track {
+		t.Fatalf("Metadata.Path = %q, want %q", cfg.Metadata.Path, track)
+	}
+	if cfg.URL != "" {
+		t.Fatalf("URL = %q, want empty", cfg.URL)
+	}
+}
+
+func TestParseConfigRejectsURLWithEnrichPath(t *testing.T) {
+	dir := t.TempDir()
+	track := filepath.Join(dir, "track.mp3")
+	if err := os.WriteFile(track, []byte("test"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := ParseConfig([]string{
+		"enrich",
+		"-url", "https://www.youtube.com/watch?v=abc123",
+		track,
+	})
+	if err == nil {
+		t.Fatal("expected validation error")
+	}
+}
+
+func TestParseConfigEnrichCommandDefaults(t *testing.T) {
+	dir := t.TempDir()
+	track := filepath.Join(dir, "track.mp3")
+	if err := os.WriteFile(track, []byte("test"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := ParseConfig([]string{"enrich", track})
+	if err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+
+	if cfg.Command != "enrich" {
+		t.Fatalf("Command = %q, want %q", cfg.Command, "enrich")
+	}
+	if !cfg.AudioOnly {
+		t.Fatal("expected enrich to default to audio-only mode")
+	}
+	if !cfg.Metadata.Enabled || !cfg.Metadata.Write {
+		t.Fatal("expected enrich to enable writable metadata processing")
+	}
+	if cfg.Metadata.Path != track {
+		t.Fatalf("Metadata.Path = %q, want %q", cfg.Metadata.Path, track)
+	}
+}
+
+func TestParseConfigSetupCommandDefaults(t *testing.T) {
+	cfg, err := ParseConfig([]string{"setup"})
+	if err != nil {
+		t.Fatalf("unexpected parse error: %v", err)
+	}
+
+	if cfg.Command != "setup" {
+		t.Fatalf("Command = %q, want %q", cfg.Command, "setup")
+	}
+	if cfg.Setup.ModelPath != "./models/qwen3-1.7b-instruct-q4_k_m.gguf" {
+		t.Fatalf("Setup.ModelPath = %q", cfg.Setup.ModelPath)
+	}
+	if cfg.Metadata.ModelPath != cfg.Setup.ModelPath {
+		t.Fatalf("Metadata.ModelPath = %q, want %q", cfg.Metadata.ModelPath, cfg.Setup.ModelPath)
+	}
+}
+
+func TestParseConfigSetupRejectsPositionals(t *testing.T) {
+	_, err := ParseConfig([]string{"setup", "extra"})
+	if err == nil {
+		t.Fatal("expected validation error")
 	}
 }

@@ -1,23 +1,62 @@
 #compdef ytdl-pro
 
 _ytdl-pro() {
-  _arguments -s -S \
-    '(-url *)-url[YouTube video or playlist URL/ID]:URL or ID:' \
-    '-out[Output directory]:directory:_directories' \
-    '-filename[Explicit output filename]:filename:_files' \
-    '-overwrite[Overwrite an existing output file]' \
-    '-timeout[Operation timeout; applied per playlist item]:duration:(10m 30m 1h 2h 0)' \
-    '-list[List available formats and exit]' \
-    '-playlist[Treat the URL or ID as a playlist]' \
-    '-i-have-rights[Confirm permission to download]' \
-    '-quality[Video quality]:quality:(best 144p 240p 360p 480p 720p 1080p hd720 hd1080)' \
-    '-audio-only[Download audio only]' \
-    '-audio-quality[Source audio quality]:quality:(best high medium low 64k 128k 192k)' \
-    '-audio-format[Audio output format]:format:(original mp3 flac wav alac)' \
-    '-mp3-mode[MP3 encoding mode]:mode:(vbr bitrate)' \
-    '-mp3-vbr[MP3 VBR quality]:quality:(0 1 2 3 4 5 6 7 8 9)' \
-    '-mp3-bitrate[MP3 bitrate]:bitrate:(128k 192k 256k 320k)' \
-    '1:YouTube URL or ID:'
+  local curcontext="$curcontext" state line
+
+  _arguments -C \
+    '1:command:(download enrich setup)' \
+    '*::arg:->args'
+
+  case $state in
+    args)
+      case $words[2] in
+        download)
+          _arguments -s -S \
+            '-url[YouTube video or playlist URL/ID]:URL or ID:' \
+            '-out[Output directory]:directory:_directories' \
+            '-filename[Explicit output filename]:filename:_files' \
+            '-overwrite[Overwrite an existing output file]' \
+            '-timeout[Operation timeout; applied per playlist item]:duration:(10m 30m 1h 2h 0)' \
+            '-list[List available formats and exit]' \
+            '-playlist[Treat the URL or ID as a playlist]' \
+            '-quality[Video quality]:quality:(best 144p 240p 360p 480p 720p 1080p hd720 hd1080)' \
+            '-audio-only[Download audio only]' \
+            '-audio-quality[Source audio quality]:quality:(best high medium low 64k 128k 192k)' \
+            '-audio-format[Audio output format]:format:(original smart mp3 flac wav alac)' \
+            '-mp3-mode[MP3 encoding mode]:mode:(vbr bitrate)' \
+            '-mp3-vbr[MP3 VBR quality]:quality:(0 1 2 3 4 5 6 7 8 9)' \
+            '-mp3-bitrate[MP3 bitrate]:bitrate:(128k 192k 256k 320k)' \
+            '1:YouTube URL or ID:'
+          ;;
+        enrich)
+          _arguments -s -S \
+            '-url[YouTube URL to download and enrich]:URL:' \
+            '-out[Output directory when enriching a YouTube URL]:directory:_directories' \
+            '-filename[Output filename when enriching a YouTube URL]:filename:_files' \
+            '-overwrite[Overwrite an existing downloaded file]' \
+            '-timeout[Timeout per file]:duration:(10s 20s 30s 45s 1m)' \
+            '-dry-run[Analyze without writing tags]' \
+            '-review[Analyze and mark likely matches for review]' \
+            '-recursive[Scan directories recursively]' \
+            '-write-base-tags[Write base source tags when enrichment is skipped]' \
+            '-json-report[Write a machine-readable JSON report]:file:_files' \
+            '-no-backup[Do not keep a backup before rewriting local file metadata]' \
+            '-explain[Show why a file was or was not changed]' \
+            '-debug[Show internal diagnostics]' \
+            '1:file or URL:_files'
+          ;;
+        setup)
+          _arguments -s -S \
+            '-skip-runtime[Skip runtime installation and linking]' \
+            '-skip-model[Skip model download]' \
+            '-skip-build[Skip building the tagged binary]' \
+            '-force[Replace existing symlinks, model file, or binary]' \
+            '-model-url[Override the default GGUF model download URL]:URL:' \
+            '-model-path[Path to store the GGUF model]:file:_files'
+          ;;
+      esac
+      ;;
+  esac
 }
 
 _ytdl-pro "$@"

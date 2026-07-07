@@ -28,7 +28,7 @@ The LLM is a ranking, reconciliation, and normalization layer.
 5. Use deterministic scoring before asking the model.
 6. Make every write auditable.
 7. Default to dry-run until the user explicitly enables writing.
-8. Keep the feature local-model-first.
+8. Keep the feature local-model-first with an embedded runtime.
 9. Keep permissive licensing as the default build constraint.
 10. Do not make a downloader behave like a fragile web scraper in a fake moustache.
 
@@ -104,7 +104,7 @@ Allowed by default:
 | Component | Role | License posture |
 |---|---|---|
 | Qwen3 model | Local LLM | Apache-2.0 |
-| Ollama or llama.cpp backend | Local inference | Backend-dependent; prefer permissive runtime |
+| Embedded libllama runtime | Local inference | llama.cpp C API via cgo |
 | MusicBrainz core data | Metadata source | CC0 |
 | ffmpeg executable | Tag writer and media tooling | external binary; distribution rules must be documented |
 
@@ -128,17 +128,22 @@ go build -tags fingerprint
 
 ## 8. Local Qwen Model Choice
 
+Default runtime:
+
+```text
+embedded libllama
+```
+
 Default model:
 
 ```text
-Qwen3-1.7B-Instruct
+Qwen3-1.7B-Instruct GGUF Q4_K_M
 ```
 
 Preferred local formats:
 
 ```text
-GGUF Q4_K_M, when using llama.cpp
-Ollama model, when using Ollama
+GGUF Q4_K_M
 ```
 
 Larger option:
@@ -158,6 +163,24 @@ Use Qwen3 because it provides small dense models under Apache-2.0 and supports m
 For this task, disable or avoid thinking mode when the runtime supports that choice.
 
 This task needs deterministic structured ranking, not long reasoning.
+
+External daemon required:
+
+```text
+false
+```
+
+Ollama required:
+
+```text
+false
+```
+
+ONNX Runtime GenAI:
+
+```text
+future optional backend
+```
 
 Recommended inference settings:
 
@@ -716,16 +739,15 @@ Generate a JSON report when requested.
 Suggested flags:
 
 ```bash
---metadata
---metadata-dry-run
---metadata-write
---metadata-review-only
+download <url>
+enrich <url-or-path>
+--dry-run
+--review
+--recursive
 --write-base-tags
---metadata-model qwen3:1.7b
---metadata-backend ollama
---metadata-min-full-confidence 0.90
---metadata-min-field-confidence 0.85
---metadata-json-report ./metadata-report.json
+--json-report ./metadata-report.json
+--explain
+--debug
 --metadata-source-discogs
 --metadata-source-web
 --experimental-web-discovery
@@ -737,12 +759,19 @@ Suggested flags:
 Default behavior:
 
 ```yaml
-metadata: false
-metadata_dry_run: true
-metadata_write: false
+download_command: explicit and non-interactive
+bare_url_shortcut: interactive
+enrich_command: explicit and non-interactive
+enrich_write_default: true
 write_base_tags: false
-backend: ollama
-model: qwen3:1.7b
+runtime: libllama
+model: qwen3-1.7b-instruct-q4_k_m
+model_path: ./models/qwen3-1.7b-instruct-q4_k_m.gguf
+grammar_path: ./grammars/metadata-decision.gbnf
+context_tokens: 4096
+max_output_tokens: 512
+threads: auto
+gpu_layers: auto
 source_musicbrainz: true
 source_discogs: false
 source_web: false
@@ -751,7 +780,44 @@ include_cover_art: false
 backup: true
 ```
 
-## 27. Go Package Structure
+## 27. User Experience
+
+Normal user examples:
+
+```bash
+ytdl-pro enrich "https://youtube.com/watch?v=..."
+ytdl-pro enrich ./song.mp3
+```
+
+The runtime choice stays internal by default.
+
+Normal output should use only these status labels:
+
+```text
+enriched
+partially enriched
+base tagged
+skipped
+failed
+```
+
+## 28. Developer Build
+
+Build without native dependencies:
+
+```bash
+go build ./cmd/ytdl-pro
+```
+
+Build with the embedded local runtime:
+
+```bash
+go build -tags libllama ./cmd/ytdl-pro
+```
+
+The tagged build should link against `libllama` and load a local GGUF model from disk.
+
+## 29. Go Package Structure
 
 Suggested packages:
 
@@ -773,10 +839,15 @@ internal/ytdlpro/metadata/sources/
 
 internal/ytdlpro/metadata/model/
   client.go
-  ollama.go
-  llamacpp.go
   prompt.go
   schema.go
+  runtime.go
+
+internal/ytdlpro/metadata/model/llama/
+  llama_cgo.go
+  llama_runtime.c
+  llama_runtime.h
+  grammar.gbnf
 
 internal/ytdlpro/tagging/
   ffmpeg.go
@@ -787,7 +858,7 @@ internal/ytdlpro/tagging/
 
 Keep source lookup, model ranking, validation, and tag writing separate.
 
-## 28. Failure Modes
+## 30. Failure Modes
 
 ### Search returns nothing
 
@@ -829,7 +900,7 @@ Retry with backoff.
 
 Then fall back to base metadata or skip.
 
-## 29. Security Rules
+## 31. Security Rules
 
 Treat all metadata as untrusted input.
 
@@ -853,7 +924,7 @@ Unicode rules:
 3. Case-fold only for comparison.
 4. Do not ASCII-fold Sinhala, Tamil, Japanese, Korean, or other non-Latin text.
 
-## 30. Album Art Policy
+## 32. Album Art Policy
 
 Album art is disabled by default.
 
@@ -876,7 +947,7 @@ include_cover_art: false
 cover_art_policy: metadata_only
 ```
 
-## 31. Optional Fingerprinting
+## 33. Optional Fingerprinting
 
 Fingerprinting is not part of the default permissive build.
 
@@ -892,7 +963,7 @@ Chromaprint only calculates fingerprints from raw uncompressed audio. It does no
 
 The project should treat Chromaprint as LGPL-2.1 as a whole because the upstream license file states that bundled FFmpeg parts are LGPL-2.1.
 
-## 32. Implementation Phases
+## 34. Implementation Phases
 
 ### Phase 1: Base Tagging
 
@@ -913,7 +984,7 @@ The project should treat Chromaprint as LGPL-2.1 as a whole because the upstream
 ### Phase 3: Qwen Ranking
 
 1. Add local model client abstraction.
-2. Add Ollama backend.
+2. Add embedded libllama backend.
 3. Add strict prompt contract.
 4. Add JSON schema validation.
 5. Add field-level confidence.
@@ -935,11 +1006,11 @@ The project should treat Chromaprint as LGPL-2.1 as a whole because the upstream
 4. Album art support.
 5. Experimental web discovery.
 
-## 33. Acceptance Criteria
+## 35. Acceptance Criteria
 
 The feature is ready when:
 
-1. `--metadata-dry-run` writes zero bytes.
+1. `ytdl-pro enrich PATH --dry-run` writes zero bytes.
 2. A downloaded MP3 can receive source-backed `title`, `artist`, and `album` tags.
 3. FLAC files receive Vorbis comment tags.
 4. M4A files receive MP4/iTunes-compatible tags.
@@ -953,7 +1024,7 @@ The feature is ready when:
 12. Existing files are not re-downloaded.
 13. The default build does not require fingerprinting, web scraping, Discogs, or cover art.
 
-## 34. Test Cases
+## 36. Test Cases
 
 Add tests for:
 
@@ -983,15 +1054,14 @@ Add tests for:
 24. ffprobe verification failure
 25. dry-run writes nothing
 
-## 35. Open Questions
+## 37. Open Questions
 
 1. Should base YouTube metadata be written by default, or only when `--write-base-tags` is enabled?
-2. Should `--metadata` imply dry-run, or should it only enable the pipeline when paired with `--metadata-write`?
-3. Should review decisions be stored as a reusable local file?
-4. Should Discogs be added before fingerprinting?
-5. Should the Go binary expose a separate `metadata review` subcommand?
+2. Should review decisions be stored as a reusable local file?
+3. Should Discogs be added before fingerprinting?
+4. Should the Go binary expose a separate `metadata review` subcommand?
 
-## 36. Summary
+## 38. Summary
 
 This design makes `ytdl-pro` metadata-aware without turning it into a full music library manager.
 
@@ -1005,7 +1075,7 @@ The system writes enriched tags only when evidence exists and confidence is high
 
 The system avoids generic scraping, album art, fingerprinting, and non-default licensing risk unless the user explicitly enables those features.
 
-## 37. References
+## 39. References
 
 1. Qwen3 model announcement: https://qwenlm.github.io/blog/qwen3/
 2. Qwen3 technical report: https://arxiv.org/abs/2505.09388

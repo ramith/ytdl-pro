@@ -7,13 +7,17 @@ ARGS ?=
 PREFIX ?= /opt/homebrew
 ZSH_COMPLETION_DIR ?= $(PREFIX)/share/zsh/site-functions
 
-.PHONY: all build run test fmt tidy install install-completion clean help
+.PHONY: all build build-libllama run test fmt tidy install install-completion clean help
 
 all: build
 
 build:
 	@mkdir -p $(BIN_DIR)
 	$(GO) build -o $(BIN) $(CMD)
+
+build-libllama:
+	@mkdir -p $(BIN_DIR)
+	CGO_ENABLED=1 $(GO) build -tags libllama -o $(BIN) $(CMD)
 
 run:
 	$(GO) run $(CMD) $(ARGS)
@@ -42,6 +46,7 @@ help:
 	@printf '%s\n' \
 		'Available targets:' \
 		'  make build                 Build ./bin/ytdl-pro' \
+		'  make build-libllama        Build ./bin/ytdl-pro with embedded libllama' \
 		'  make run ARGS="..."        Run the application with arguments' \
 		'  make test                  Run all tests' \
 		'  make fmt                   Format Go source files' \

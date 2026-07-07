@@ -1,0 +1,35 @@
+root ::= "{" ws action-field "," ws overall-confidence-field "," ws selected-candidate-ids-field "," ws reason-codes-field "," ws fields-field "," ws warnings-field ws "}"
+
+action-field ::= "\"action\"" ws ":" ws action-value
+overall-confidence-field ::= "\"overall_confidence\"" ws ":" ws number
+selected-candidate-ids-field ::= "\"selected_candidate_ids\"" ws ":" ws string-array
+reason-codes-field ::= "\"reason_codes\"" ws ":" ws string-array
+fields-field ::= "\"fields\"" ws ":" ws "{" ws title-field "," ws artist-field "," ws album-field "," ws album-artist-field "," ws date-field "," ws genre-field "," ws label-field "," ws track-number-field "," ws disc-number-field "," ws recording-id-field "," ws release-id-field ws "}"
+warnings-field ::= "\"warnings\"" ws ":" ws string-array
+
+title-field ::= "\"title\"" ws ":" ws field-object
+artist-field ::= "\"artist\"" ws ":" ws field-object
+album-field ::= "\"album\"" ws ":" ws field-object
+album-artist-field ::= "\"album_artist\"" ws ":" ws field-object
+date-field ::= "\"date\"" ws ":" ws field-object
+genre-field ::= "\"genre\"" ws ":" ws field-object
+label-field ::= "\"label\"" ws ":" ws field-object
+track-number-field ::= "\"track_number\"" ws ":" ws field-object
+disc-number-field ::= "\"disc_number\"" ws ":" ws field-object
+recording-id-field ::= "\"musicbrainz_recording_id\"" ws ":" ws field-object
+release-id-field ::= "\"musicbrainz_release_id\"" ws ":" ws field-object
+
+field-object ::= "{" ws "\"value\"" ws ":" ws nullable-string "," ws "\"confidence\"" ws ":" ws number "," ws "\"source_candidate_id\"" ws ":" ws nullable-string ws "}"
+
+action-value ::= "\"write_full\"" | "\"write_partial\"" | "\"write_base_only\"" | "\"skip\"" | "\"needs_review\""
+nullable-string ::= string | "null"
+string-array ::= "[" ws (string (ws "," ws string)*)? ws "]"
+string ::= "\"" char* "\""
+char ::= [^"\\] | "\\" (["\\/bfnrt] | "u" hex hex hex hex)
+number ::= minus? int frac?
+minus ::= "-"
+int ::= "0" | [1-9] [0-9]*
+frac ::= "." [0-9]+
+hex ::= [0-9a-fA-F]
+ws ::= [ \t\n\r]*
+
